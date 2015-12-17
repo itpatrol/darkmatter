@@ -92,7 +92,19 @@ function darkmatter_node($ajax, $node){
   ))
   ->condition('nid', $node->nid)
   ->execute();
-
+  
+  if($node->darkmatter){
+    db_update('darkmatter_stats')
+    ->expression('nodes', 'nodes - 1')
+    ->condition('uid', $node->uid)
+    ->execute();
+  }else{
+    db_update('darkmatter_stats')
+    ->expression('nodes', 'nodes + 1')
+    ->condition('uid', $node->uid)
+    ->execute();
+  }
+  
   $is_ajax = $ajax === 'ajax';
 
   if ($is_ajax) {
@@ -137,6 +149,19 @@ function darkmatter_comment($ajax, $comment){
   ))
   ->condition('cid', $comment->cid)
   ->execute();
+  
+  if($comment->darkmatter){
+    db_update('darkmatter_stats')
+    ->expression('comments', 'comments - 1')
+    ->condition('uid', $comment->uid)
+    ->execute();
+  }else{
+    db_update('darkmatter_stats')
+    ->expression('comments', 'comments + 1')
+    ->condition('uid', $comment->uid)
+    ->execute();
+  }
+
 
   $is_ajax = $ajax === 'ajax';
 
@@ -280,23 +305,45 @@ function darkmatter_form_user_profile_form_alter(&$form, &$form_state, $form_id)
  * Implements hook_user_view().
  */
 function darkmatter_user_view($account, $view_mode) {
+  $darkmatter_stats = darkmatter_stats($account->uid);
+  
+  $account->content['summary']['darkmatter'] = array(
+    '#type' => 'user_profile_item',
+    '#title' => t('Dark matter'),
+    '#markup' => t('Nodes: !dark_node/!total_node, comments: !dark_comment/!total_comment', array(
+      '!dark_node' => $darkmatter_stats->nodes,
+      '!total_node' => $darkmatter_stats->total_nodes,
+      '!dark_comment' => $darkmatter_stats->comments,
+      '!total_comment' => $darkmatter_stats->total_comments,
+    )),
+  );
+}
+
+/**
+ * Return user dark matter stats
+ */
+
+function darkmatter_stats($uid){
+
+  $darkmatter_stats = db_select('darkmatter_stats', 'ds')
+    ->fields('ds')
+    ->condition('uid', $uid)
+    ->execute()
+    ->fetchObject();
+    
   $result = db_select('comment', 'c')
     ->fields('c')
-    ->condition('uid', $account->uid)
+    ->condition('uid', $uid)
     ->execute();
 
-  $num_of_comments = $result->rowCount();
+  $darkmatter_stats->total_comments = $result->rowCount();
 
   $result = db_select('node', 'n')
     ->fields('n')
-    ->condition('uid', $account->uid)
+    ->condition('uid', $uid)
     ->execute();
 
-  $num_of_node = $result->rowCount();
-    
-  $account->content['darkmatter'] = array(
-    '#type' => 'markup',
-    '#value' => '',
-    '#weight' => 10,
-  );
+  $darkmatter_stats->total_nodes = $result->rowCount();
+
+  return $darkmatter_stats;
 }
