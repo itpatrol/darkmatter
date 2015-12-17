@@ -52,6 +52,15 @@ function darkmatter_install() {
   )); 
   db_add_index('node', 'darkmatter', array('darkmatter'));
 
+  // Add darkmatter field to node.
+  db_add_field('users', 'darkmatter', array(
+    'type' => 'int',
+    'not null' => TRUE,
+    'default' => 0,
+    'description' => 'Dark matter visibility flag.',
+  )); 
+  db_add_index('users', 'darkmatter', array('darkmatter'));
+
 }
 
 /**
@@ -70,6 +79,13 @@ function darkmatter_schema_alter(&$schema) {
     'not null' => TRUE,
     'default' => 0,
   );
+  $schema['users']['fields']['darkmatter'] = array(
+    'description' => 'Dark matter visibility flag.',
+    'type' => 'int',
+    'not null' => TRUE,
+    'default' => 0,
+  );
+
 }
 
 /**
