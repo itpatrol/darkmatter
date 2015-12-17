@@ -56,6 +56,32 @@ function darkmatter_menu() {
 }
 
 /**
+ * Implements hook_query_TAG_alter()().
+ */
+function darkmatter_query_node_load_multiple_alter(QueryAlterableInterface $query){
+  global $user;
+
+  if(!user_access('darkmatter comments')){
+    if(!isset($user->darkmatter) or $user->darkmatter == 0 ){
+      $query->condition('base.darkmatter', 0);
+    }
+  }
+}
+
+/**
+ * Implements hook_query_TAG_alter()().
+ */
+function darkmatter_query_comment_load_multiple_alter(QueryAlterableInterface $query){
+  global $user;
+
+  if(!user_access('darkmatter comments')){
+    if(!isset($user->darkmatter) or $user->darkmatter == 0 ){
+      $query->condition('base.darkmatter', 0);
+    }
+  }
+}
+
+/**
  * Mark or remove mark 'darkmatter' from node.
  */
 function darkmatter_node($ajax, $node){
