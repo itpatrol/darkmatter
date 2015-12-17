@@ -323,9 +323,27 @@ function darkmatter_user_view($account, $view_mode) {
 }
 
 /**
+ * Implements hook_node_load().
+ */
+function darkmatter_node_load($nodes, $types) {
+  global $user;
+  foreach ($nodes as $node) {
+    if(!$user->darkmatter && isset($node->comment_count)){
+      // We need to hide darkmatter comment counters
+      $result = db_select('comment', 'c')
+        ->fields('c')
+        ->condition('darkmatter', 0)
+        ->condition('nid', $node->nid)
+        ->execute();
+      $node->comment_count = $result->rowCount();
+      
+    }
+  }
+}
+
+/**
  * Return user dark matter stats
  */
-
 function darkmatter_stats($uid){
 
   $darkmatter_stats = db_select('darkmatter_stats', 'ds')
