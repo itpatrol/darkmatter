@@ -1,0 +1,186 @@
+<?php
+
+/**
+ * @file
+ * Dark matter module.
+ */
+
+/**
+ * Implements hook_menu().
+ */
+function darkmatter_menu() {
+  $items['darkmatter/node/nojs/%node'] = array(
+    'page callback' => 'darkmatter_node',
+    'page arguments' => array(2, 3),
+    'access callback' => TRUE,
+    'type' => MENU_CALLBACK,
+  );
+  
+  $items['darkmatter/node/ajax/%node'] = array(
+    'page callback' => 'darkmatter_node',
+    'page arguments' => array(2, 3),
+    'access callback' => TRUE,
+    'delivery callback' => 'ajax_deliver',
+    'type' => MENU_CALLBACK,
+  );
+  
+  $items['darkmatter/comment/nojs/%comment'] = array(
+    'page callback' => 'darkmatter_comment',
+    'page arguments' => array(2, 3),
+    'access callback' => TRUE,
+    'type' => MENU_CALLBACK,
+  );
+  
+  $items['darkmatter/comment/ajax/%comment'] = array(
+    'page callback' => 'darkmatter_comment',
+    'page arguments' => array(2, 3),
+    'access callback' => TRUE,
+    'delivery callback' => 'ajax_deliver',
+    'type' => MENU_CALLBACK,
+  );
+  
+  return $items;
+}
+
+function darkmatter_node($ajax, $node){
+
+  db_update('node') // Table name no longer needs {}
+  ->fields(array(
+    'darkmatter' => $node->darkmatter ? 0 : 1,
+  ))
+  ->condition('nid', $node->nid)
+  ->execute();
+
+  $is_ajax = $ajax === 'ajax';
+
+  if ($is_ajax) {
+    $commands = array();
+    
+    if($node->darkmatter){
+      $commands[] = ajax_command_invoke('#node-' . $node->nid, 'removeClass', array('darkmatter'));
+      $title = t('darkmatter');
+    }else{
+      $commands[] = ajax_command_invoke('#node-' . $node->nid, 'addClass', array('darkmatter'));
+      $title = t('not darkmatter');
+    }
+
+    $link = l($title, 'darkmatter/node/nojs/' . $node->nid, array('attributes' => array('class' => array('use-ajax', 'darkmatter-node-' . $node->nid))));
+
+    $commands[] = ajax_command_replace('.darkmatter-node-' . $node->nid, $link);
+    
+    
+    return array(
+      '#type' => 'ajax',
+      '#commands' => $commands,
+    );
+  }else{
+    if($node->darkmatter){
+      drupal_set_message(t('It is not a dark matter anymore'));
+    }else{
+      drupal_set_message(t('Marked as dark matter'));
+    }
+    drupal_goto();
+  }
+}
+
+function darkmatter_comment($ajax, $comment){
+
+  db_update('comment') // Table name no longer needs {}
+  ->fields(array(
+    'darkmatter' => $comment->darkmatter ? 0 : 1,
+  ))
+  ->condition('cid', $comment->cid)
+  ->execute();
+
+  $is_ajax = $ajax === 'ajax';
+
+  if ($is_ajax) {
+    $commands = array();
+    
+    if($comment->darkmatter){
+      $commands[] = ajax_command_invoke('.darkmatter-comment-' . $comment->cid, 'removeClass', array('darkmatter'));
+      $title = t('darkmatter');
+    }else{
+      $commands[] = ajax_command_invoke('.darkmatter-comment-' . $comment->cid, 'addClass', array('darkmatter'));
+      $title = t('not darkmatter');
+    }
+
+    $link = l($title, 'darkmatter/comment/nojs/' . $comment->cid, array('attributes' => array('class' => array('use-ajax', 'darkmatter-comment-link-' . $comment->cid))));
+
+    $commands[] = ajax_command_replace('.darkmatter-comment-link-' . $comment->cid, $link);
+
+    return array(
+      '#type' => 'ajax',
+      '#commands' => $commands,
+    );
+  }else{
+    if($comment->darkmatter){
+      drupal_set_message(t('It is not a dark matter anymore'));
+    }else{
+      drupal_set_message(t('Marked as dark matter'));
+    }
+    drupal_goto();
+  }
+}
+
+
+/**
+ * Implements hook_node_view().
+ */
+function darkmatter_node_view($node, $view_mode) {
+//  drupal_set_message('<pre>'. print_r($node->content['links'],true). '</pre>');
+  drupal_add_library('system', 'drupal.ajax');
+  
+  $node->content['links']['comment']['#links']['darkmatter-link'] = array(
+    'title' => $node->darkmatter ? t('not darkmatter') : t('dark matter'),
+    'href' => "darkmatter/node/nojs/" . $node->nid,
+    'query' => drupal_get_destination(),
+    'attributes' => array(
+      'title' => $node->darkmatter ?  t('It is not dark matter!'): t('Mark this content as dark matter.'),
+      'class' => array('use-ajax', 'darkmatter-node-' . $node->nid),
+    ),
+  );
+}
+
+/**
+ * Implements hook_node_view().
+ */
+function darkmatter_comment_view($comment, $view_mode, $langcode) {
+  drupal_add_library('system', 'drupal.ajax');
+  
+  $comment->content['links']['comment']['#links']['darkmatter-link'] = array(
+    'title' => $comment->darkmatter ? t('not darkmatter') : t('dark matter'),
+    'href' => "darkmatter/comment/nojs/" . $comment->cid,
+    'query' => drupal_get_destination(),
+    'attributes' => array(
+      'title' => $comment->darkmatter ?  t('It is not dark matter!'): t('Mark this content as dark matter.'),
+      'class' => array('use-ajax', 'darkmatter-comment-link-' . $comment->cid),
+    ),
+  );
+}
+
+
+/**
+ * Implements hook_preprocess_comment().
+ *
+ * Add class darkmatter to comment when applicable.
+ */ 
+function darkmatter_preprocess_comment(&$variables) {
+  $comment = $variables['comment'];
+  if($comment->darkmatter){
+    $variables['classes_array'][] = 'darkmatter';
+  }
+  $variables['classes_array'][] = 'darkmatter-comment-' . $comment->cid;
+}
+
+/**
+ * Implements hook_preprocess_node().
+ *
+ * Add class darkmatter to node when applicable.
+ */
+function darkmatter_preprocess_node(&$variables) {
+  $node = $variables['node'];
+  if($node->darkmatter){
+    $variables['classes_array'][] = 'darkmatter';
+  }
+}
