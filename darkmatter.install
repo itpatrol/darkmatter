@@ -25,6 +25,7 @@ function darkmatter_schema() {
         'description' => 'Total comments with darkmatter flag for {users}.uid',
       ),
     ),
+    'primary key' => array('uid'),
   );
   return $schema;
 }
