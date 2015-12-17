@@ -6,20 +6,31 @@
  */
 
 /**
+ * Implements hook_permission().
+ */
+function darkmatter_permission() {
+  return array(
+    'darkmatter comments' => array(
+      'title' => t('Mark comments as darkmatter'),
+    ),
+  );
+}
+
+/**
  * Implements hook_menu().
  */
 function darkmatter_menu() {
   $items['darkmatter/node/nojs/%node'] = array(
     'page callback' => 'darkmatter_node',
     'page arguments' => array(2, 3),
-    'access callback' => TRUE,
+    'access arguments' => array('darkmatter comments'),
     'type' => MENU_CALLBACK,
   );
   
   $items['darkmatter/node/ajax/%node'] = array(
     'page callback' => 'darkmatter_node',
     'page arguments' => array(2, 3),
-    'access callback' => TRUE,
+    'access arguments' => array('darkmatter comments'),
     'delivery callback' => 'ajax_deliver',
     'type' => MENU_CALLBACK,
   );
@@ -27,14 +38,16 @@ function darkmatter_menu() {
   $items['darkmatter/comment/nojs/%comment'] = array(
     'page callback' => 'darkmatter_comment',
     'page arguments' => array(2, 3),
-    'access callback' => TRUE,
+    'access callback' => 'darkmatter_comment_access',
+    'access arguments' => array(3),
     'type' => MENU_CALLBACK,
   );
   
   $items['darkmatter/comment/ajax/%comment'] = array(
     'page callback' => 'darkmatter_comment',
     'page arguments' => array(2, 3),
-    'access callback' => TRUE,
+    'access callback' => 'darkmatter_comment_access',
+    'access arguments' => array(3),
     'delivery callback' => 'ajax_deliver',
     'type' => MENU_CALLBACK,
   );
@@ -138,15 +151,17 @@ function darkmatter_node_view($node, $view_mode) {
 //  drupal_set_message('<pre>'. print_r($node->content['links'],true). '</pre>');
   drupal_add_library('system', 'drupal.ajax');
   
-  $node->content['links']['comment']['#links']['darkmatter-link'] = array(
-    'title' => $node->darkmatter ? t('not darkmatter') : t('dark matter'),
-    'href' => "darkmatter/node/nojs/" . $node->nid,
-    'query' => drupal_get_destination(),
-    'attributes' => array(
-      'title' => $node->darkmatter ?  t('It is not dark matter!'): t('Mark this content as dark matter.'),
-      'class' => array('use-ajax', 'darkmatter-node-' . $node->nid),
-    ),
-  );
+  if(user_access('darkmatter comments')){
+    $node->content['links']['comment']['#links']['darkmatter-link'] = array(
+      'title' => $node->darkmatter ? t('not darkmatter') : t('dark matter'),
+      'href' => "darkmatter/node/nojs/" . $node->nid,
+      'query' => drupal_get_destination(),
+      'attributes' => array(
+        'title' => $node->darkmatter ?  t('It is not dark matter!'): t('Mark this content as dark matter.'),
+        'class' => array('use-ajax', 'darkmatter-node-' . $node->nid),
+      ),
+    );
+  }
 }
 
 /**
@@ -155,15 +170,38 @@ function darkmatter_node_view($node, $view_mode) {
 function darkmatter_comment_view($comment, $view_mode, $langcode) {
   drupal_add_library('system', 'drupal.ajax');
   
-  $comment->content['links']['comment']['#links']['darkmatter-link'] = array(
-    'title' => $comment->darkmatter ? t('not darkmatter') : t('dark matter'),
-    'href' => "darkmatter/comment/nojs/" . $comment->cid,
-    'query' => drupal_get_destination(),
-    'attributes' => array(
-      'title' => $comment->darkmatter ?  t('It is not dark matter!'): t('Mark this content as dark matter.'),
-      'class' => array('use-ajax', 'darkmatter-comment-link-' . $comment->cid),
-    ),
-  );
+  if(darkmatter_comment_access($comment)){
+    $comment->content['links']['comment']['#links']['darkmatter-link'] = array(
+      'title' => $comment->darkmatter ? t('not darkmatter') : t('dark matter'),
+      'href' => "darkmatter/comment/nojs/" . $comment->cid,
+      'query' => drupal_get_destination(),
+      'attributes' => array(
+        'title' => $comment->darkmatter ?  t('It is not dark matter!'): t('Mark this content as dark matter.'),
+        'class' => array('use-ajax', 'darkmatter-comment-link-' . $comment->cid),
+      ),
+    );
+  }
+}
+
+/*
+ * Menu access callback to check permissions
+ */
+function darkmatter_comment_access($comment){
+  global $user;
+
+  $node = db_select('node', 'n')
+    ->fields('n')
+    ->condition('nid', $comment->nid)
+    ->execute()
+    ->fetchAssoc();
+  if($node['uid'] == $user->uid){
+    return TRUE;
+  }
+  
+  if(user_access('darkmatter comments')){
+    return TRUE;
+  }
+  return FALSE;
 }
 
 
