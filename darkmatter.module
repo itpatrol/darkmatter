@@ -151,14 +151,18 @@ function darkmatter_comment($ajax, $comment){
   ->condition('cid', $comment->cid)
   ->execute();
   
+  
+  $cids = darkmatter_comment_mark_subcomments($comment->cid, $comment->darkmatter ? 0 : 1);
+  $cids[] = $comment->cid;
+
   if($comment->darkmatter){
     db_update('darkmatter_stats')
-    ->expression('comments', 'comments - 1')
+    ->expression('comments', 'comments - ' . count($cids))
     ->condition('uid', $comment->uid)
     ->execute();
   }else{
     db_update('darkmatter_stats')
-    ->expression('comments', 'comments + 1')
+    ->expression('comments', 'comments + ' . count($cids))
     ->condition('uid', $comment->uid)
     ->execute();
   }
@@ -169,20 +173,23 @@ function darkmatter_comment($ajax, $comment){
   if ($is_ajax) {
     $commands = array();
     
-    if($comment->darkmatter){
-      $commands[] = ajax_command_invoke('.darkmatter-comment-' . $comment->cid, 'removeClass', array('darkmatter'));
-      $title = t('darkmatter');
-    }else{
-      $commands[] = ajax_command_invoke('.darkmatter-comment-' . $comment->cid, 'addClass', array('darkmatter'));
-      $title = t('not darkmatter');
+    foreach($cids as $cid){
+      if($comment->darkmatter){
+        $commands[] = ajax_command_invoke('.darkmatter-comment-' . $cid, 'removeClass', array('darkmatter'));
+        $title = t('darkmatter');
+      }else{
+        $commands[] = ajax_command_invoke('.darkmatter-comment-' . $cid, 'addClass', array('darkmatter'));
+        $title = t('not darkmatter');
+      }
+      
+      if(!user_access('darkmatter comments') and !$user->darkmatter ){
+        $commands[] = ajax_command_remove('.darkmatter-comment-' . $cid);
+      }else{
+        $link = l($title, 'darkmatter/comment/nojs/' . $cid, array('attributes' => array('class' => array('use-ajax', 'darkmatter-comment-link-' . $cid))));
+        $commands[] = ajax_command_replace('.darkmatter-comment-link-' . $cid, $link);
+      }
     }
-    
-    if(!user_access('darkmatter comments') and !$user->darkmatter ){
-      $commands[] = ajax_command_remove('.darkmatter-comment-' . $comment->cid);
-    }else{
-      $link = l($title, 'darkmatter/comment/nojs/' . $comment->cid, array('attributes' => array('class' => array('use-ajax', 'darkmatter-comment-link-' . $comment->cid))));
-      $commands[] = ajax_command_replace('.darkmatter-comment-link-' . $comment->cid, $link);
-    }
+
     return array(
       '#type' => 'ajax',
       '#commands' => $commands,
@@ -197,6 +204,32 @@ function darkmatter_comment($ajax, $comment){
   }
 }
 
+/**
+ * Mark all child comments as darkmatter
+ */
+function darkmatter_comment_mark_subcomments($cid, $darkmatter){
+  $cids = array();
+  
+  db_update('comment') // Table name no longer needs {}
+  ->fields(array(
+    'darkmatter' => $darkmatter,
+  ))
+  ->condition('pid', $cid)
+  ->execute();
+  
+  $subcomments = db_select('comment', 'c')
+    ->fields('c')
+    ->condition('pid', $cid)
+    ->execute()
+    ->fetchAll();
+    
+  foreach($subcomments as $subcomment){
+    $cids[] = $subcomment->cid;
+    $subcids = darkmatter_comment_mark_subcomments($subcomment->cid, $darkmatter);
+    $cids = array_merge($cids, $subcids);
+  }
+  return $cids;
+}
 
 /**
  * Implements hook_node_view().
