@@ -63,7 +63,7 @@ function darkmatter_query_node_load_multiple_alter(QueryAlterableInterface $quer
 
   if(!user_access('darkmatter comments')){
     if(!isset($user->darkmatter) or $user->darkmatter == 0 ){
-      $query->condition('base.darkmatter', 0);
+      $query->condition(db_or()->condition('base.darkmatter', 0)->condition('base.uid', $user->uid));
     }
   }
 }
@@ -76,7 +76,7 @@ function darkmatter_query_comment_load_multiple_alter(QueryAlterableInterface $q
 
   if(!user_access('darkmatter comments')){
     if(!isset($user->darkmatter) or $user->darkmatter == 0 ){
-      $query->condition('base.darkmatter', 0);
+      $query->condition(db_or()->condition('base.darkmatter', 0)->condition('base.uid', $user->uid));
     }
   }
 }
