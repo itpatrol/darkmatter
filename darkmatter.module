@@ -42,6 +42,9 @@ function darkmatter_menu() {
   return $items;
 }
 
+/**
+ * Mark or remove mark 'darkmatter' from node.
+ */
 function darkmatter_node($ajax, $node){
 
   db_update('node') // Table name no longer needs {}
@@ -82,6 +85,10 @@ function darkmatter_node($ajax, $node){
     drupal_goto();
   }
 }
+
+/**
+ * Mark or remove mark 'darkmatter' from comment.
+ */
 
 function darkmatter_comment($ajax, $comment){
 
