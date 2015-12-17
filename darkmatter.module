@@ -255,6 +255,12 @@ function darkmatter_preprocess_node(&$variables) {
   }
 }
 
+/**
+ * Implements hook_FROM_ID_form_alter().
+ *
+ * Add settings to see darkmatter.
+ */
+
 function darkmatter_form_user_profile_form_alter(&$form, &$form_state, $form_id) {
   if($term_nid = variable_get('darkmatter_term_nid', FALSE)){
     $title = t('I agree with !link', array('!link' => l('Dark Matter term and conditions!', 'node/' . $term_nid)));
@@ -267,5 +273,30 @@ function darkmatter_form_user_profile_form_alter(&$form, &$form_state, $form_id)
     '#type' => 'checkbox',
     '#title' => $title,
     '#default_value' => $account->darkmatter,
+  );
+}
+
+/**
+ * Implements hook_user_view().
+ */
+function darkmatter_user_view($account, $view_mode) {
+  $result = db_select('comment', 'c')
+    ->fields('c')
+    ->condition('uid', $account->uid)
+    ->execute();
+
+  $num_of_comments = $result->rowCount();
+
+  $result = db_select('node', 'n')
+    ->fields('n')
+    ->condition('uid', $account->uid)
+    ->execute();
+
+  $num_of_node = $result->rowCount();
+    
+  $account->content['darkmatter'] = array(
+    '#type' => 'markup',
+    '#value' => '',
+    '#weight' => 10,
   );
 }
