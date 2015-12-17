@@ -1,0 +1,81 @@
+<?php
+
+/**
+ * Implements hook_schema().
+ */
+function darkmatter_schema() {
+  $schema['darkmatter_stats'] = array(
+    'description' => 'Stores darkmatter stats for users.',
+    'fields' => array(
+      'uid' => array(
+        'type' => 'serial',
+        'not null' => TRUE,
+        'description' => 'Primary Key: Unique user ID.',
+      ),
+      'nodes' => array(
+        'type' => 'int',
+        'not null' => TRUE,
+        'default' => 0,
+        'description' => 'Total nodes with darkmatter flag for {users}.uid',
+      ),
+      'comments' => array(
+        'type' => 'int',
+        'not null' => TRUE,
+        'default' => 0,
+        'description' => 'Total comments with darkmatter flag for {users}.uid',
+      ),
+    ),
+  );
+  return $schema;
+}
+
+/**
+ * Implements hook_install().
+ */
+function darkmatter_install() {
+  // Add darkmatter field to comment.
+  db_add_field('comment', 'darkmatter', array(
+    'type' => 'int',
+    'not null' => TRUE,
+    'default' => 0,
+    'description' => 'Dark matter flag.',
+  )); 
+  db_add_index('comment', 'darkmatter', array('darkmatter'));
+
+  // Add darkmatter field to node.
+  db_add_field('node', 'darkmatter', array(
+    'type' => 'int',
+    'not null' => TRUE,
+    'default' => 0,
+    'description' => 'Dark matter flag.',
+  )); 
+  db_add_index('node', 'darkmatter', array('darkmatter'));
+
+}
+
+/**
+ * Implements hook_schema_alter().
+ */
+function darkmatter_schema_alter(&$schema) {
+  $schema['comment']['fields']['darkmatter'] = array(
+    'description' => 'Dark matter flag.',
+    'type' => 'int',
+    'not null' => TRUE,
+    'default' => 0,
+  );
+  $schema['node']['fields']['darkmatter'] = array(
+    'description' => 'Dark matter flag.',
+    'type' => 'int',
+    'not null' => TRUE,
+    'default' => 0,
+  );
+}
+
+/**
+ * Implements hook_uninstall().
+ */
+function darkmatter_uninstall() {
+  // Delete darkmatter fields.
+  db_drop_field('node', 'darkmatter');
+  db_drop_field('comment', 'darkmatter');
+}
