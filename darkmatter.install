@@ -66,6 +66,7 @@ function darkmatter_install() {
     ->execute()
     ->fetchAll();
 
+  $uids = array();
   foreach($accounts as $account){
     if($account->uid > 0){
       $stat = array(
@@ -74,7 +75,56 @@ function darkmatter_install() {
         'comments' => 0,
       );
       drupal_write_record('darkmatter_stats', $stat);
+      
+      if($account->status){
+        $uids[] = $account->uid;
+      }
     }
+  }
+  
+  if(!empty($uids)){
+    $comments = db_select('comment', 'c')
+      ->fields('c')
+      ->condition('status', 0)
+      ->condition('uid', $uids, 'IN')
+      ->execute()
+      ->fetchAll();
+    
+    foreach($comments as $comment){
+      db_update('comment') // Table name no longer needs {}
+        ->fields(array(
+          'darkmatter' => 1,
+          'status' => 1,
+        ))
+        ->condition('cid', $comment->cid)
+        ->execute();
+      _install_darkmatter_comment_mark_subcomments($comment->cid);
+    }
+  }
+}
+
+/**
+ * Mark all child comments as darkmatter
+ */
+function _install_darkmatter_comment_mark_subcomments($cid){
+  $cids = array();
+  
+  db_update('comment') // Table name no longer needs {}
+  ->fields(array(
+    'darkmatter' => 1,
+    'status' => 1,
+  ))
+  ->condition('pid', $cid)
+  ->execute();
+  
+  $subcomments = db_select('comment', 'c')
+    ->fields('c')
+    ->condition('pid', $cid)
+    ->execute()
+    ->fetchAll();
+    
+  foreach($subcomments as $subcomment){
+    _install_darkmatter_comment_mark_subcomments($subcomment->cid);
   }
 }
 
