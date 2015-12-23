@@ -125,6 +125,7 @@ function darkmatter_node($ajax, $node){
     ->condition('uid', $node->uid)
     ->execute();
     darkmatter_node_notify($node);
+    darkmatter_node_comments($node);
   }
   
   $is_ajax = $ajax === 'ajax';
@@ -226,6 +227,24 @@ function darkmatter_comment($ajax, $comment){
   }
 }
 
+function darkmatter_node_comments($node){
+  db_update('comment')
+    ->fields(array(
+      'darkmatter' => 1,
+    ))
+    ->condition('nid', $node->nid)
+    ->execute();
+  
+  $comments = db_select('comment', 'c')
+    ->fields('c')
+    ->condition('nid', $node->nid)
+    ->execute()
+    ->fetchAll();
+  foreach($comments as $comment){
+    darkmatter_comment_notify($comment->cid);
+  }
+}
+
 /**
  * Mark all child comments as darkmatter
  */
@@ -233,11 +252,11 @@ function darkmatter_comment_mark_subcomments($cid, $darkmatter){
   $cids = array();
   
   db_update('comment') // Table name no longer needs {}
-  ->fields(array(
-    'darkmatter' => $darkmatter,
-  ))
-  ->condition('pid', $cid)
-  ->execute();
+    ->fields(array(
+      'darkmatter' => $darkmatter,
+    ))
+    ->condition('pid', $cid)
+    ->execute();
   
   darkmatter_comment_notify($cid);
   
