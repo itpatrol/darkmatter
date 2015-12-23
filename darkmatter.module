@@ -77,6 +77,34 @@ function darkmatter_menu() {
 }
 
 /**
+ * Implements hook_comment_insert().
+ */
+function darkmatter_comment_insert($comment) {
+  if($comment->pid > 0 ){
+    $parent_comment = comment_load($comment->pid);
+    if($parent_comment->darkmatter){
+      db_update('comment')
+        ->fields(array(
+          'darkmatter' => 1,
+        ))
+        ->condition('cid', $comment->cid)
+        ->execute();
+        return;
+    }
+  }
+  $node = node_load($comment->nid);
+  if($node->darkmatter){
+    db_update('comment')
+      ->fields(array(
+        'darkmatter' => 1,
+      ))
+      ->condition('cid', $comment->cid)
+      ->execute();
+      return;
+  }
+}
+
+/**
  * Implements hook_query_TAG_alter()().
  */
 function darkmatter_query_node_load_multiple_alter(QueryAlterableInterface $query){
@@ -163,7 +191,6 @@ function darkmatter_node($ajax, $node){
 /**
  * Mark or remove mark 'darkmatter' from comment.
  */
-
 function darkmatter_comment($ajax, $comment){
   global $user;
   
